@@ -1,1 +1,1 @@
-web: python filehub_tycoon/main.py
+worker: python filehub_tycoon/main.py

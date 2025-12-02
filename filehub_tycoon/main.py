@@ -7,7 +7,6 @@ import sys
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
-from http.server import HTTPServer, BaseHTTPRequestHandler
 
 from utils.config import Config
 from utils.database import Database
@@ -86,37 +85,8 @@ class TorrentTrackerBot:
             self.application.stop()
         sys.exit(0)
 
-class HealthCheckHandler(BaseHTTPRequestHandler):
-    """Простой health check handler для Railway"""
-
-    def do_GET(self):
-        if self.path == '/health':
-            self.send_response(200)
-            self.send_header('Content-type', 'text/plain')
-            self.end_headers()
-            self.wfile.write(b"OK")
-        else:
-            self.send_response(404)
-            self.end_headers()
-
-    def log_message(self, format, *args):
-        """Отключаем логирование health checks"""
-        pass
-
-def start_health_server():
-    """Запуск простого health check сервера"""
-    port = int(os.environ.get('PORT', 8000))
-    server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
-    print(f"🏥 Health check server запущен на порту {port}")
-    server.serve_forever()
-
 def main():
     """Главная функция"""
-    # Запускаем health check сервер в отдельном потоке
-    import threading
-    health_thread = threading.Thread(target=start_health_server, daemon=True)
-    health_thread.start()
-
     # Запускаем бота
     bot = TorrentTrackerBot()
     bot.run()

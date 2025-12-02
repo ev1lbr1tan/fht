@@ -4,7 +4,7 @@ import logging
 from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
 
-from game.models import GameState, Staff, UserRole
+from game.models import GameState, Staff, UserRole, InfrastructureLevel, HostingRegion
 from utils.database import Database
 
 logger = logging.getLogger(__name__)
@@ -16,7 +16,7 @@ class StateManager:
         self.db = db
         self._active_states: Dict[int, GameState] = {}
     
-    def create_new_game(self, user_id: int, username: str = None, 
+    def create_new_game(self, user_id: int, username: str = None,
                        first_name: str = None, last_name: str = None) -> GameState:
         """Создание новой игры"""
         try:
@@ -29,43 +29,40 @@ class StateManager:
                 setup_complete=False,
                 name_setup_step="name"
             )
-            
-            # Сохраняем игрока в базе данных
-            self.db.save_player(user_id, username, first_name, last_name)
-            
+
             # Сохраняем игру в базе данных
-            game_id = self.db.save_game(
+            self.db.save_game(
                 user_id=user_id,
                 tracker_name=game_state.tracker_name,
                 game_state=game_state.model_dump()
             )
-            
+
             # Кэшируем состояние в памяти
             self._active_states[user_id] = game_state
-            
+
             logger.info(f"Создана новая игра для пользователя {user_id}")
             return game_state
-            
+
         except Exception as e:
             logger.error(f"Ошибка создания новой игры для пользователя {user_id}: {e}")
             raise
     
     def load_game(self, user_id: int) -> Optional[GameState]:
-        """Загрузка активной игры"""
+        """Загрузка игры пользователя"""
         try:
             # Проверяем кэш
             if user_id in self._active_states:
                 return self._active_states[user_id]
-            
+
             # Загружаем из базы данных
-            game_data = self.db.load_active_game(user_id)
-            if game_data:
+            game_data = self.db.load_game(user_id)
+            if game_data and game_data['game_state']:
                 game_state = GameState(**game_data['game_state'])
                 self._active_states[user_id] = game_state
                 return game_state
-            
+
             return None
-            
+
         except Exception as e:
             logger.error(f"Ошибка загрузки игры для пользователя {user_id}: {e}")
             return None
@@ -76,20 +73,15 @@ class StateManager:
             if user_id not in self._active_states:
                 logger.warning(f"Нет активной игры для пользователя {user_id}")
                 return False
-            
+
             game_state = self._active_states[user_id]
-            game_data = self.db.load_active_game(user_id)
-            game_id = game_data['game_id'] if game_data else None
-            
-            self.db.save_game(
+
+            return self.db.save_game(
                 user_id=user_id,
                 tracker_name=game_state.tracker_name,
-                game_state=game_state.model_dump(),
-                game_id=game_id
+                game_state=game_state.model_dump()
             )
-            
-            return True
-            
+
         except Exception as e:
             logger.error(f"Ошибка сохранения игры для пользователя {user_id}: {e}")
             return False
@@ -186,24 +178,24 @@ class StateManager:
         try:
             if user_id not in self._active_states:
                 return False
-            
+
             game_state = self._active_states[user_id]
             infrastructure = game_state.infrastructure
-            
+
             # Обновляем соответствующий компонент инфраструктуры
             if upgrade_type == 'server' and hasattr(infrastructure, 'server_level'):
-                infrastructure.server_level = level
+                infrastructure.server_level = InfrastructureLevel(level)
             elif upgrade_type == 'bandwidth' and hasattr(infrastructure, 'bandwidth_level'):
-                infrastructure.bandwidth_level = level
+                infrastructure.bandwidth_level = InfrastructureLevel(level)
             elif upgrade_type == 'storage' and hasattr(infrastructure, 'storage_level'):
-                infrastructure.storage_level = level
+                infrastructure.storage_level = InfrastructureLevel(level)
             elif upgrade_type == 'security' and hasattr(infrastructure, 'security_level'):
-                infrastructure.security_level = level
+                infrastructure.security_level = InfrastructureLevel(level)
             else:
                 return False
-            
+
             return True
-            
+
         except Exception as e:
             logger.error(f"Ошибка апгрейда инфраструктуры для пользователя {user_id}: {e}")
             return False
@@ -213,16 +205,16 @@ class StateManager:
         try:
             if user_id not in self._active_states:
                 return False
-            
+
             game_state = self._active_states[user_id]
             hosting = game_state.hosting
-            
+
             # Добавляем новый регион
-            hosting.regions[region] = level
+            hosting.regions[HostingRegion(region)] = InfrastructureLevel(level)
             hosting.mirrors_count += 1
-            
+
             return True
-            
+
         except Exception as e:
             logger.error(f"Ошибка добавления региона хостинга для пользователя {user_id}: {e}")
             return False
