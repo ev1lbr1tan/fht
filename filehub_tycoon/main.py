@@ -87,8 +87,8 @@ class TorrentTrackerBot:
         sys.exit(0)
 
 class HealthCheckHandler(BaseHTTPRequestHandler):
-    """Health check handler для Railway"""
-    
+    """Простой health check handler для Railway"""
+
     def do_GET(self):
         if self.path == '/health':
             self.send_response(200)
@@ -98,13 +98,13 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
         else:
             self.send_response(404)
             self.end_headers()
-    
+
     def log_message(self, format, *args):
         """Отключаем логирование health checks"""
         pass
 
 def start_health_server():
-    """Запуск health check сервера"""
+    """Запуск простого health check сервера"""
     port = int(os.environ.get('PORT', 8000))
     server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
     print(f"🏥 Health check server запущен на порту {port}")
@@ -116,7 +116,7 @@ def main():
     import threading
     health_thread = threading.Thread(target=start_health_server, daemon=True)
     health_thread.start()
-    
+
     # Запускаем бота
     bot = TorrentTrackerBot()
     bot.run()
