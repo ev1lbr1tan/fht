@@ -1,0 +1,13 @@
+[build]
+builder = "NIXPACKS"
+watchPatterns = ["file_hub_tycoon/**"]
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+[environments.production]
+DATABASE_URL = "${DATABASE_URL}"
+BOT_TOKEN = "${BOT_TOKEN}"

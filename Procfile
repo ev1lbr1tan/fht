@@ -1,0 +1,1 @@
+web: python file_hub_tycoon/main.py
